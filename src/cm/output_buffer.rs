@@ -158,14 +158,64 @@ impl OutputBuffer {
         }
     }
 
+    #[inline]
+    fn apply_color(win: Option<WINDOW>, pair: i16) {
+        match win {
+            Some(w) => wattron(w, COLOR_PAIR(pair)),
+            None    => attron(COLOR_PAIR(pair)),
+        };
+    }
+
+    #[inline]
+    fn remove_color(win: Option<WINDOW>, pair: i16) {
+        match win {
+            Some(w) => wattroff(w, COLOR_PAIR(pair)),
+            None    => attroff(COLOR_PAIR(pair)),
+        };
+    }
+
+    #[inline]
+    fn draw_text(win: Option<WINDOW>, s: &str) {
+        match win {
+            Some(w) => waddstr(w, s),
+            None    => addstr(s)
+        };
+    }
+
     pub fn render(
         &mut self,
         rect: Rect,
         focused: bool,
+        preview: bool,
         regex_result: Option<Result<Regex, pcre2::Error>>,
     ) {
+        let mut left_win: Option<WINDOW> = None;
+        let mut right_win: Option<WINDOW> = None;
+
+        if preview {
+            clear();
+            refresh();
+
+            let mut max_y = 0;
+            let mut max_x = 0;
+            getmaxyx(stdscr(), &mut max_y, &mut max_x);
+
+            let left_width = max_x / 2;
+            let right_width = max_x - left_width;
+
+            let lwin = newwin(max_y, left_width, 0, 0);
+            let rwin = newwin(max_y, right_width, 0, left_width);
+
+            mvwaddstr(rwin, 1, 2, "Cat preview here...");
+
+            box_(rwin, 0, 0);
+
+            left_win = Some(lwin);
+            right_win = Some(rwin);
+        }
+
         if let Some(list) = self.lists.last_mut() {
-            list.render(rect, focused);
+            list.render_inside_window(rect, focused, left_win);
 
             let Rect { x, y, w, h } = rect;
             if h > 0 {
@@ -216,19 +266,26 @@ impl OutputBuffer {
                                                     },
                                                     item,
                                                 );
-                                                mv(
-                                                    (y + i) as i32,
-                                                    (char_start - list.scroll_x + x) as i32,
-                                                );
-                                                attron(COLOR_PAIR(cap_pair));
-                                                addstr(
-                                                    item.get(
-                                                        effective_byte_mat.start
-                                                            ..effective_byte_mat.end,
-                                                    )
-                                                    .unwrap_or(""),
-                                                );
-                                                attroff(COLOR_PAIR(cap_pair));
+
+                                                match left_win {
+                                                    Some(win) => {
+                                                        let y = i as i32;
+                                                        let x = (char_start - list.scroll_x) as i32;
+                                                        wmove(win, y, x);
+                                                    }
+                                                    None => {
+                                                        let y = (y + i) as i32;
+                                                        let x = (char_start - list.scroll_x + x) as i32;
+                                                        mv(y, x);
+                                                    }
+                                                }
+
+                                                Self::apply_color(left_win, cap_pair);
+
+                                                let mat = item.get(effective_byte_mat.start .. effective_byte_mat.end).unwrap_or("");
+                                                Self::draw_text(left_win, mat);
+
+                                                Self::remove_color(left_win, cap_pair);
                                             }
                                         }
                                     }
@@ -239,6 +296,9 @@ impl OutputBuffer {
                 }
             }
         }
+
+        if let Some(win) = left_win  { wrefresh(win); }
+        if let Some(win) = right_win { wrefresh(win); }
     }
 
     pub fn kill_the_child(&mut self) {

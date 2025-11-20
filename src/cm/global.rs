@@ -4,6 +4,7 @@ use pcre2::bytes::Regex;
 #[derive(PartialEq, Clone, Copy)]
 pub enum Mode {
     Output,
+    Preview,
     Regexs,
     Cmds,
 }
@@ -52,6 +53,13 @@ impl Global {
             true
         } else if key_map.is_bound(key_stroke, action::OPEN_KEY_MAP_SETTINGS) {
             self.key_map_settings = true;
+            true
+        } else if key_map.is_bound(key_stroke, action::PREV_MODE) {
+            if self.mode == Mode::Output {
+                self.mode = Mode::Preview;
+            } else {
+                self.mode = Mode::Output;
+            }
             true
         } else if key_map.is_bound(key_stroke, action::REGEXS_MODE) {
             if self.mode == Mode::Regexs {

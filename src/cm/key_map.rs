@@ -6,6 +6,7 @@ use std::mem::{transmute, MaybeUninit};
 use std::string::ToString;
 
 // TODO(#152): KeyMap is not configuration right from the application
+#[derive(Debug)]
 pub struct KeyMap {
     // NOTE: We are using BTreeSet here for a consistent
     // ordering when we are saving the KeyMap to the configuration
@@ -317,6 +318,13 @@ impl KeyMap {
                 alt: false,
             },
             action::CMDS_MODE,
+        );
+        result.bind(
+            KeyStroke {
+                key: 'P' as i32,
+                alt: false,
+            },
+            action::PREV_MODE,
         );
         result
     }

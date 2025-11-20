@@ -136,7 +136,35 @@ impl<T: ToString + Clone> ItemList<T> {
         }
     }
 
-    pub fn render(&mut self, Rect { x, y, w, h }: Rect, focused: bool) {
+    pub fn render(&mut self, rect: Rect, focused: bool) {
+        self.render_inside_window(rect, focused, None);
+    }
+
+    #[inline]
+    fn apply_color(win: Option<WINDOW>, pair: i16) {
+        match win {
+            Some(w) => wattron(w, COLOR_PAIR(pair)),
+            None    => attron(COLOR_PAIR(pair)),
+        };
+    }
+
+    #[inline]
+    fn remove_color(win: Option<WINDOW>, pair: i16) {
+        match win {
+            Some(w) => wattroff(w, COLOR_PAIR(pair)),
+            None    => attroff(COLOR_PAIR(pair)),
+        };
+    }
+
+    #[inline]
+    fn draw_text(win: Option<WINDOW>, s: &str) {
+        match win {
+            Some(w) => waddstr(w, s),
+            None    => addstr(s)
+        };
+    }
+
+    pub fn render_inside_window(&mut self, Rect { x, y, w, h }: Rect, focused: bool, window: Option<WINDOW>) {
         if h > 0 {
             self.sync_scroll_y(h);
             // TODO(#16): word wrapping for long lines
@@ -147,7 +175,11 @@ impl<T: ToString + Clone> ItemList<T> {
                         unicode::width_substr(s.trim_end(), self.scroll_x..self.scroll_x + w)
                             .unwrap();
 
-                    mv((y + i) as i32, x as i32);
+                    match window {
+                        Some(win) => wmove(win, i as i32, 0),
+                        None      => mv((y + i) as i32, x as i32)
+                    };
+
                     let selected = self.scroll_y + i == self.cursor_y;
                     // TODO(#188): item list selection does not extend until the end of the screen
                     let pair = if selected {
@@ -159,16 +191,18 @@ impl<T: ToString + Clone> ItemList<T> {
                     } else {
                         REGULAR_PAIR
                     };
-                    attron(COLOR_PAIR(pair));
-                    for _ in 0..left {
-                        addstr(" ");
-                    }
-                    // addstr(&format!("{:?}", (left, right)));
-                    addstr(&line_to_render);
-                    for _ in 0..right {
-                        addstr(" ");
-                    }
-                    attroff(COLOR_PAIR(pair));
+
+                    Self::apply_color(window, pair);
+
+                    let padded = format!(
+                        "{}{}{}",
+                        " ".repeat(left),
+                        line_to_render,
+                        " ".repeat(right),
+                    );
+                    Self::draw_text(window, &padded);
+
+                    Self::remove_color(window, pair);
                 }
             }
         }

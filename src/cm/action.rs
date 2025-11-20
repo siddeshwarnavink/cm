@@ -33,7 +33,8 @@ pub const PAGE_UP: Type = 28;
 pub const PAGE_DOWN: Type = 29;
 pub const REGEXS_MODE: Type = 30;
 pub const CMDS_MODE: Type = 31;
-pub const LEN: usize = 32;
+pub const PREV_MODE: Type = 32;
+pub const LEN: usize = 33;
 
 pub const NAMES: [&str; LEN] = [
     "up",
@@ -68,6 +69,7 @@ pub const NAMES: [&str; LEN] = [
     "page_down",
     "regexs_mode",
     "cmds_mode",
+    "prev_mode",
 ];
 
 pub fn from_str(s: &str) -> Result<Type, String> {

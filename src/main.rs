@@ -140,7 +140,7 @@ fn main() {
                 }
             } else {
                 match global.mode {
-                    Mode::Output => {
+                    Mode::Output | Mode::Preview => {
                         output_buffer.handle_key(key_stroke, &profile, &mut global, &profile.shell)
                     }
                     Mode::Regexs => {
@@ -202,18 +202,21 @@ fn main() {
 
                 match global.mode {
                     Mode::Output => {
-                        output_buffer.render(working_rect, true, profile.current_regex())
+                        output_buffer.render(working_rect, true, false, profile.current_regex())
+                    }
+                    Mode::Preview => {
+                        output_buffer.render(working_rect, true, true, profile.current_regex())
                     }
                     Mode::Regexs => {
                         let (output_buffer_rect, profile_rect) = working_rect.horizontal_split(3);
-                        output_buffer.render(output_buffer_rect, false, profile.current_regex());
+                        output_buffer.render(output_buffer_rect, false, false, profile.current_regex());
                         profile
                             .regex_list
                             .render(profile_rect, true, &mut global.cursor);
                     }
                     Mode::Cmds => {
                         let (output_buffer_rect, profile_rect) = working_rect.horizontal_split(3);
-                        output_buffer.render(output_buffer_rect, false, profile.current_regex());
+                        output_buffer.render(output_buffer_rect, false, false, profile.current_regex());
                         profile
                             .cmd_list
                             .render(profile_rect, true, &mut global.cursor);
