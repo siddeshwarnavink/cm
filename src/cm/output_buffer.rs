@@ -206,8 +206,6 @@ impl OutputBuffer {
             let lwin = newwin(max_y, left_width, 0, 0);
             let rwin = newwin(max_y, right_width, 0, left_width);
 
-            mvwaddstr(rwin, 1, 2, "Cat preview here...");
-
             box_(rwin, 0, 0);
 
             left_win = Some(lwin);
@@ -246,6 +244,21 @@ impl OutputBuffer {
                             let cap_mats = regex.captures_iter(item.as_bytes()).next();
                             if let Some(cap_mat) = cap_mats {
                                 if let Ok(caps) = cap_mat {
+
+                                    if selected {
+                                        if let Some(loc_match) = caps.get(0) {
+                                            if let Ok(loc) = str::from_utf8(loc_match.as_bytes()) { 
+                                                if let Some((file_path, line_no_str)) = loc.split_once(':') {
+                                                    let line_no = line_no_str[..line_no_str.len()-1].parse::<usize>()
+                                                        .unwrap_or(0);
+                                                    if let Some(win) = right_win {
+                                                        render_preview(win, file_path, line_no);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
                                     // NOTE: we are skiping first cap because it contains the
                                     // whole match which is not needed in our case
                                     // TODO(#196): match highlighting does not respect the column width of the unicode characters
@@ -297,8 +310,9 @@ impl OutputBuffer {
             }
         }
 
-        if let Some(win) = left_win  { wrefresh(win); }
-        if let Some(win) = right_win { wrefresh(win); }
+        if let Some(win) = left_win  {
+            wrefresh(win);
+        }
     }
 
     pub fn kill_the_child(&mut self) {
